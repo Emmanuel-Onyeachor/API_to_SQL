@@ -1,0 +1,42 @@
+import requests
+import sqlite3
+import json
+
+# Step 1: Fetch data from CoinGecko API
+url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd"
+response = requests.get(url)
+data = response.json()
+print(data)
+
+# Step 2: Automatically pick column headers (to prevent listing them all in INSERT INTO step)
+column_headers = list(data[0].keys())
+
+# Step 3: Create and connect to SQLite database
+conn = sqlite3.connect('cryptocurrency.db')
+cursor = conn.cursor()
+
+# Step 4: Create SQL table
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS coins (
+    id TEXT PRIMARY KEY,
+    symbol TEXT,
+    name TEXT,
+    image TEXT,
+    current_price REAL
+)
+''')
+conn.commit()
+
+# Step 5: Insert data into the database
+
+insert_query = f'''
+INSERT OR REPLACE INTO coins (
+    {", ".join(column_headers)}
+) VALUES ({('?, '*len(column_headers)).strip(', ')})
+'''
+
+for coin in data:
+    cursor.execute(insert_query, ([coin[col] for col in column_headers]))
+
+conn.commit()
+conn.close()
